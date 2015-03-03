@@ -843,28 +843,30 @@ static SIAlertView *__si_alert_current_view;
     if (self.messageLabel) {
         CGFloat maxHeight = MESSAGE_MAX_LINE_COUNT * self.messageLabel.font.lineHeight;
         
-        #ifdef __IPHONE_7_0
-            NSMutableParagraphStyle *paragraphStyle = [[NSMutableParagraphStyle alloc] init];
-            paragraphStyle.lineBreakMode = self.messageLabel.lineBreakMode;
-            
-            NSDictionary *attributes = @{NSFontAttributeName:self.messageLabel.font,
-                                         NSParagraphStyleAttributeName: paragraphStyle.copy};
-            
-            // NSString class method: boundingRectWithSize:options:attributes:context is
-            // available only on ios7.0 sdk.
-            CGRect rect = [self.titleLabel.text boundingRectWithSize:CGSizeMake(CONTAINER_WIDTH - CONTENT_PADDING_LEFT * 2, maxHeight)
-                                                             options:NSStringDrawingUsesLineFragmentOrigin
-                                                          attributes:attributes
-                                                             context:nil];
-            
-            return MAX(minHeight, ceil(rect.size.height));
-        #else
-            CGSize size = [self.message sizeWithFont:self.messageLabel.font
-                                   constrainedToSize:CGSizeMake(CONTAINER_WIDTH - CONTENT_PADDING_LEFT * 2, maxHeight)
-                                       lineBreakMode:self.messageLabel.lineBreakMode];
-            
-            return MAX(minHeight, size.height);
-        #endif
+#ifdef __IPHONE_7_0
+        NSMutableParagraphStyle *paragraphStyle = [[NSMutableParagraphStyle alloc] init];
+        paragraphStyle.lineBreakMode = self.messageLabel.lineBreakMode;
+        
+        NSDictionary *attributes = @{NSFontAttributeName:self.messageLabel.font,
+                                     NSForegroundColorAttributeName:self.messageColor,
+                                     NSParagraphStyleAttributeName: paragraphStyle.copy};
+        
+        NSMutableAttributedString *sizingString = [[NSMutableAttributedString alloc] initWithString: self.messageLabel.text attributes:attributes];
+        
+        CGRect rect = [sizingString boundingRectWithSize:CGSizeMake(CONTAINER_WIDTH - (CONTENT_PADDING_LEFT * 2), maxHeight) options:(NSStringDrawingUsesLineFragmentOrigin|NSStringDrawingUsesFontLeading) context:nil];
+        
+#if !(__has_feature(objc_arc))
+        [sizingString release];
+#endif
+        
+        return MAX(minHeight, ceil(rect.size.height));
+#else
+        CGSize size = [self.message sizeWithFont:self.messageLabel.font
+                               constrainedToSize:CGSizeMake(CONTAINER_WIDTH - CONTENT_PADDING_LEFT * 2, maxHeight)
+                                   lineBreakMode:self.messageLabel.lineBreakMode];
+        
+        return MAX(minHeight, size.height);
+#endif
     }
     
     return minHeight;
@@ -941,7 +943,8 @@ static SIAlertView *__si_alert_current_view;
             self.messageLabel.backgroundColor = [UIColor clearColor];
             self.messageLabel.font = self.messageFont;
             self.messageLabel.textColor = self.messageColor;
-            self.messageLabel.numberOfLines = MESSAGE_MAX_LINE_COUNT;
+            self.messageLabel.numberOfLines = 0;
+            self.messageLabel.lineBreakMode = NSLineBreakByWordWrapping;
             [self.containerView addSubview:self.messageLabel];
 #if DEBUG_LAYOUT
             self.messageLabel.backgroundColor = [UIColor redColor];
